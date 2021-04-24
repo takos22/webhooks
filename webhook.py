@@ -34,7 +34,7 @@ class WebhookHandler(View):
         except ValueError:
             raise BadRequest(str(ValueError))
 
-        title = "[{}] Read The Docs build ".format(data["slug"]
+        title = "[{}] Read The Docs build ".format(data["slug"])
         url = "https://readthedocs.org/projects/{}/builds/{}".format(
             data["slug"], data["build"]["id"]
         )
