@@ -1,0 +1,3 @@
+baguette
+uvicorn[standard]
+aiohttp
