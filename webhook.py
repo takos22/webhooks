@@ -9,7 +9,7 @@ with open("webhooks.json") as f:
     webhooks = json.load(f)  # id: {func_name: ..., token: ..., **kwargs}
 
 
-@app.route("/<webhook_id>", name="webhook")
+@app.route("/webhooks/<webhook_id>", name="webhook")
 class WebhookHandler(View):
     async def post(self, request: Request, webhook_id: str):
         if webhook_id not in webhooks:
@@ -34,17 +34,26 @@ class WebhookHandler(View):
         except ValueError:
             raise BadRequest(str(ValueError))
 
-        print(data, flush=True)
+        title = "[{}] Read The Docs build ".format(data["slug"]
+        url = "https://readthedocs.org/projects/{}/builds/{}".format(
+            data["slug"], data["build"]["id"]
+        )
 
-        discord_embed = {
-            "title": "[baguette] Read The Docs build {} on commit ``{}``".format(
+        if data["build"]["state"] == "triggered":
+            title += "started"
+            color = 3447003
+
+        else:
+            title += "{} on commit ``{}``".format(
                 "success" if data["build"]["success"] else "failure",
                 data["build"]["commit"][:7],
-            ),
-            "url": "https://readthedocs.org/projects/baguette/builds/{}/".format(
-                data["build"]["id"]
-            ),
-            "color": 38912 if data["build"]["success"] else 16525609,
+            )
+            color = 38912 if data["build"]["success"] else 16525609
+
+        discord_embed = {
+            "title": title,
+            "url": url,
+            "color": color,
         }
 
         discord_webhook = {"embeds": [discord_embed]}
