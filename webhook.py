@@ -27,8 +27,6 @@ class WebhookHandler(View):
             webhooks = webhooks[name]
 
         webhook = webhooks
-        print(webhook, flush=True)
-        print(request.querystring["token"], flush=True)
 
         if webhook.get("token", "") not in request.querystring.get(
             "token", [""]
