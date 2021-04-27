@@ -1,26 +1,43 @@
 import aiohttp
 import json
 from baguette import Baguette, Request, View
-from baguette.httpexceptions import BadRequest, Forbidden, NotImplemented
+from baguette.httpexceptions import (
+    BadRequest,
+    Forbidden,
+    NotImplemented,
+    NotFound,
+)
 
 app = Baguette(error_response_type="json")
 
-with open("webhooks.json") as f:
-    webhooks = json.load(f)  # id: {func_name: ..., token: ..., **kwargs}
 
-
-@app.route("/webhooks/<webhook_id>", name="webhook")
+@app.route("/webhooks/<webhook_path:path>", name="webhook")
 class WebhookHandler(View):
-    async def post(self, request: Request, webhook_id: str):
-        if webhook_id not in webhooks:
-            raise BadRequest(description="Unknown webhook")
+    with open("webhooks.json") as f:
+        webhooks = json.load(f)
+        # name: {token: ..., **kwargs}
+        # name: {name: {token: ..., **kwargs}}
 
-        webhook = webhooks[webhook_id]
+    async def post(self, request: Request, webhook_path: str):
+        webhooks = self.webhooks
+        for name in webhook_path.split("/"):
+            if name not in webhooks:
+                raise NotFound(description="Unknown webhook")
 
-        if webhook["token"] not in request.querystring.get("token", [""]):
+            webhooks = webhooks[name]
+
+        webhook = webhooks
+
+        if webhook.get("token", "") not in request.querystring.get(
+            "token", [""]
+        ):
             raise Forbidden(description="Bad token")
 
-        handler = getattr(self, webhook["func_name"], None)
+        for name in webhook_path.split("/"):
+            handler = getattr(self, name, None)
+            if handler is not None:
+                break
+
         if handler is None:
             raise NotImplemented(  # noqa: F901
                 description="Handler for this webhook isn't implemented"
@@ -28,11 +45,14 @@ class WebhookHandler(View):
 
         return await handler(request, webhook)
 
-    async def readthedocs_to_discord(self, request: Request, webhook):
+    async def readthedocs(self, request: Request, webhook):
+        if "discord_webhook_url" not in webhook:
+            raise NotFound(description="Unknown webhook")
+
         try:
             data = await request.json()
         except ValueError:
-            raise BadRequest(str(ValueError))
+            raise BadRequest(description=str(ValueError))
 
         title = "[{}] Read The Docs build ".format(data["slug"])
         url = "https://readthedocs.org/projects/{}/builds/{}".format(
