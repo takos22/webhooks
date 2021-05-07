@@ -11,7 +11,7 @@ from baguette.httpexceptions import (
 app = Baguette(error_response_type="json")
 
 
-@app.route("/webhooks/<webhook_path:path>", name="webhook")
+@app.route("/<webhook_path:path>", name="webhook")
 class WebhookHandler(View):
     with open("webhooks.json") as f:
         webhooks = json.load(f)
